@@ -51,17 +51,31 @@ jobs:
       - name: 📥 Checkout Repository Code
         uses: actions/checkout@v4
 
-      - name: 🧪 Run Snyk Vulnerability Scan (requirements.txt)
+      - name: 🧪 Scan requirements.txt (pip)
         uses: snyk/actions/python-3.10@master
         continue-on-error: true
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
         with:
-          args: test --file=requirements.txt --package-manager=pip --exclude=**/pyproject.toml --sarif-file-output=snyk.sarif --severity-threshold=high
-      - name: ☁️ Upload Snyk SARIF Report to GitHub Code Scanning
+          args: test --file=requirements.txt --package-manager=pip --sarif-file-output=snyk-pip.sarif --severity-threshold=high
+
+      - name: ☁️ Upload SARIF from pip scan
         uses: github/codeql-action/upload-sarif@v2
         with:
-          sarif_file: snyk.sarif
+          sarif_file: snyk-pip.sarif
+
+      - name: 🧪 Scan pyproject.toml (poetry)
+        uses: snyk/actions/python-3.10@master
+        continue-on-error: true
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        with:
+          args: test --file=pyproject.toml --package-manager=poetry --sarif-file-output=snyk-poetry.sarif --severity-threshold=high
+
+      - name: ☁️ Upload SARIF from poetry scan
+        uses: github/codeql-action/upload-sarif@v2
+        with:
+          sarif_file: snyk-poetry.sarif
 
   gitleaks:
     name: 🔐 Gitleaks Secret Detection
