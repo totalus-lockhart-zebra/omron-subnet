@@ -11,13 +11,11 @@ permissions:
   security-events: write # Required for uploading SARIF reports
 
 jobs:
+
   snyk:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
-      - uses: snyk/actions/setup@v4  # Correct usage
-
       - name: Run Snyk to check for vulnerabilities
         uses: snyk/actions/python-3.10@master
         env:
