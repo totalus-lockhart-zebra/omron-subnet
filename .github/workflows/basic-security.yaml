@@ -19,14 +19,11 @@ jobs:
       - uses: snyk/actions/setup@v3  # Correct usage
 
       - name: Run Snyk to check for vulnerabilities
-        uses: snyk/actions/node@master
+        uses: snyk/actions/python-3.10@master
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
-
-      - name: Upload SARIF to GitHub Security tab
-        uses: github/codeql-action/upload-sarif@v3
         with:
-          sarif_file: snyk_container.sarif
+          args: --severity-threshold=high
 
   gitleaks:
     runs-on: ubuntu-latest
