@@ -16,7 +16,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: snyk/actions/setup@v3  # Correct usage
+      - uses: snyk/actions/setup@v4  # Correct usage
 
       - name: Run Snyk to check for vulnerabilities
         uses: snyk/actions/python-3.10@master
