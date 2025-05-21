@@ -18,11 +18,10 @@ jobs:
 
       - uses: snyk/actions/setup@v3  # Correct usage
 
-      - name: Run Snyk tests
+      - name: Run Snyk to check for vulnerabilities
+        uses: snyk/actions/node@master
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
-        run: |
-          snyk test --sarif-file-output=snyk_oss.sarif
 
       - name: Upload SARIF to GitHub Security tab
         uses: github/codeql-action/upload-sarif@v3
