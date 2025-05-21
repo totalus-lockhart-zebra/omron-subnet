@@ -44,14 +44,14 @@ jobs:
           DIGEST=$(docker inspect --format='{{index .RepoDigests 0}}' $IMAGE_NAME:${{ github.sha }})
           echo "image_uri=$DIGEST" >> $GITHUB_OUTPUT
 
-  snyk:
-    name: 🔍 Snyk Dependency Vulnerability Scan
+  snyk-pip:
+    name: 🔍 Snyk Scan (requirements.txt - pip)
     runs-on: ubuntu-latest
     steps:
       - name: 📥 Checkout Repository Code
         uses: actions/checkout@v4
 
-      - name: 🧪 Scan requirements.txt (pip)
+      - name: 🧪 Run Snyk Scan for pip
         uses: snyk/actions/python-3.10@master
         continue-on-error: true
         env:
@@ -59,12 +59,19 @@ jobs:
         with:
           args: test --file=requirements.txt --package-manager=pip --sarif-file-output=snyk-pip.sarif --severity-threshold=high
 
-      - name: ☁️ Upload SARIF from pip scan
+      - name: ☁️ Upload SARIF Report (pip)
         uses: github/codeql-action/upload-sarif@v2
         with:
           sarif_file: snyk-pip.sarif
 
-      - name: 🧪 Scan pyproject.toml (poetry)
+  snyk-poetry:
+    name: 🔍 Snyk Scan (pyproject.toml - poetry)
+    runs-on: ubuntu-latest
+    steps:
+      - name: 📥 Checkout Repository Code
+        uses: actions/checkout@v4
+
+      - name: 🧪 Run Snyk Scan for poetry
         uses: snyk/actions/python-3.10@master
         continue-on-error: true
         env:
@@ -72,11 +79,11 @@ jobs:
         with:
           args: test --file=pyproject.toml --package-manager=poetry --sarif-file-output=snyk-poetry.sarif --severity-threshold=high
 
-      - name: ☁️ Upload SARIF from poetry scan
+      - name: ☁️ Upload SARIF Report (poetry)
         uses: github/codeql-action/upload-sarif@v2
         with:
           sarif_file: snyk-poetry.sarif
-
+          
   gitleaks:
     name: 🔐 Gitleaks Secret Detection
     runs-on: ubuntu-latest
