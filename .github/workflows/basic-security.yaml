@@ -7,15 +7,39 @@ on:
       - master
       - main
 
-env:
-  IMAGE_URI: ghcr.io/inference-labs-inc/omron@sha256:a4804ae54c164d4b24fb82fc8458cc0e3ac0037adba9067bf53b0319eef5bdf9
-
 permissions:
   contents: read
+  packages: write        # Required to push to GHCR
   pull-requests: write
   security-events: write
 
 jobs:
+
+  build-and-push:
+    name: Build and Push Docker Image
+    runs-on: ubuntu-latest
+    outputs:
+      image_uri: ${{ steps.push.outputs.image_uri }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build Docker image
+        run: |
+          docker build -t ghcr.io/${{ github.repository_owner }}/omron:temp-tag .
+
+      - name: Push image and get digest
+        id: push
+        run: |
+          docker push ghcr.io/${{ github.repository_owner }}/omron:temp-tag
+          DIGEST=$(docker inspect --format='{{index .RepoDigests 0}}' ghcr.io/${{ github.repository_owner }}/omron:temp-tag)
+          echo "image_uri=$DIGEST" >> $GITHUB_OUTPUT
 
   snyk:
     runs-on: ubuntu-latest
@@ -33,7 +57,6 @@ jobs:
         with:
           sarif_file: snyk.sarif
 
-
   gitleaks:
     runs-on: ubuntu-latest
     steps:
@@ -44,12 +67,13 @@ jobs:
         continue-on-error: true
 
   trivy:
+    needs: build-and-push
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: aquasecurity/trivy-action@master
         with:
-          image-ref: ${{ env.IMAGE_URI }}
+          image-ref: ${{ needs.build-and-push.outputs.image_uri }}
           ignore-unfixed: true
           severity: CRITICAL,HIGH
           format: sarif
