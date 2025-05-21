@@ -46,7 +46,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: aquasecurity/trivy-action@v0.20
+      - uses: aquasecurity/trivy-action@master
         with:
           image-ref: ${{ env.IMAGE_URI }}
           ignore-unfixed: true
