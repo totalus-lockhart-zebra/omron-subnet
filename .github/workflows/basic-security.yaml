@@ -1,14 +1,19 @@
 name: Security Baseline
 
 on:
-  pull_request: {}      # Triggers on all PRs
-  push:                 # Triggers on all pushes to any branch
-    branches: ["**"]
+  pull_request: {}
+  push:
+    branches:
+      - master
+      - main
+
+env:
+  IMAGE_URI: ghcr.io/inference-labs-inc/omron@sha256:a4804ae54c164d4b24fb82fc8458cc0e3ac0037adba9067bf53b0319eef5bdf9
 
 permissions:
   contents: read
-  pull-requests: write   # Required for commenting on PRs
-  security-events: write # Required for uploading SARIF reports
+  pull-requests: write
+  security-events: write
 
 jobs:
 
@@ -18,7 +23,7 @@ jobs:
       - uses: actions/checkout@master
       - name: Run Snyk to check for vulnerabilities
         uses: snyk/actions/python-3.10@master
-        continue-on-error: true # To make sure that SARIF upload gets called
+        continue-on-error: true
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
         with:
@@ -32,51 +37,32 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
       - uses: gitleaks/gitleaks-action@v2
         with:
           args: "detect --source=. --no-banner"
-        continue-on-error: true  # Non-blocking leak detection
+        continue-on-error: true
 
-  # Uncomment to enable Docker Scout
-  # scout:
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #     - uses: actions/checkout@v4
-  #     - uses: docker/login-action@v3
-  #       with:
-  #         username: ${{ secrets.DOCKER_USER }}
-  #         password: ${{ secrets.DOCKER_PAT }}
-  #     - uses: docker/scout-action@v1
-  #       if: github.event_name == 'pull_request'
-  #       with:
-  #         command: quickview,cves
-  #         image: bittensor-subnet:${{ github.sha }}
-  #         only-severities: critical,high
-  #         github-token: ${{ secrets.GITHUB_TOKEN }}
+  trivy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: aquasecurity/trivy-action@v0.20
+        with:
+          image-ref: ${{ env.IMAGE_URI }}
+          ignore-unfixed: true
+          severity: CRITICAL,HIGH
+          format: sarif
+          output: trivy.sarif
+          exit-code: 0
+      - uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: trivy.sarif
 
-  # Uncomment to enable Trivy
-  # trivy:
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #     - uses: actions/checkout@v4
-  #     - uses: aquasecurity/trivy-action@v0.20
-  #       with:
-  #         image-ref: bittensor-subnet:${{ github.sha }}
-  #         ignore-unfixed: true
-  #         severity: CRITICAL,HIGH
-  #         format: sarif
-  #         output: trivy.sarif
-  #         exit-code: 0
-  #     - uses: github/codeql-action/upload-sarif@v3
-  #       with:
-  #         sarif_file: trivy.sarif
-
-  # Uncomment to enable CodeQL (Python example)
-  # codeql:
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #     - uses: github/codeql-action/init@v3
-  #       with:
-  #         languages: python
-  #     - uses: github/codeql-action/analyze@v3
+  codeql:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: github/codeql-action/init@v3
+        with:
+          languages: python
+      - uses: github/codeql-action/analyze@v3
