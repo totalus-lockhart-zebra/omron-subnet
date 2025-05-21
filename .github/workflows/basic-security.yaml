@@ -1,15 +1,45 @@
 name: Security Baseline
+
 on:
-  pull_request:
-  push:
-    branches: [main]
+  pull_request: {}      # Triggers on all PRs
+  push:                 # Triggers on all pushes to any branch
+    branches: ["**"]
 
 permissions:
   contents: read
-  pull-requests: write   # Scout & Snyk comment PRs
-  security-events: write # upload SARIF (CodeQL, Snyk, Trivy)
+  pull-requests: write   # Required for commenting on PRs
+  security-events: write # Required for uploading SARIF reports
 
 jobs:
+  snyk:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: snyk/actions/setup@v3
+
+      - name: Snyk OSS + Container
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        run: |
+          snyk test --sarif-file-output=snyk_oss.sarif
+
+      - name: Upload SARIF
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: snyk_container.sarif
+
+  gitleaks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: gitleaks/gitleaks-action@v2
+        with:
+          args: "detect --source=. --no-banner"
+        continue-on-error: true  # Non-blocking leak detection
+
+  # Uncomment to enable Docker Scout
   # scout:
   #   runs-on: ubuntu-latest
   #   steps:
@@ -26,22 +56,7 @@ jobs:
   #         only-severities: critical,high
   #         github-token: ${{ secrets.GITHUB_TOKEN }}
 
-  snyk:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: snyk/actions/setup@v3
-      - name: Snyk OSS + Container
-        env:
-          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
-        run: |
-          snyk test --sarif-file-output=snyk_oss.sarif
-          snyk container test bittensor-subnet:${{ github.sha }} --severity-threshold=high --sarif > snyk_container.sarif
-      - name: Upload SARIF
-        uses: github/codeql-action/upload-sarif@v3
-        with:
-          sarif_file: snyk_container.sarif
-
+  # Uncomment to enable Trivy
   # trivy:
   #   runs-on: ubuntu-latest
   #   steps:
@@ -53,25 +68,16 @@ jobs:
   #         severity: CRITICAL,HIGH
   #         format: sarif
   #         output: trivy.sarif
-  #         exit-code: 0                # non‑blocking first
+  #         exit-code: 0
   #     - uses: github/codeql-action/upload-sarif@v3
   #       with:
   #         sarif_file: trivy.sarif
 
+  # Uncomment to enable CodeQL (Python example)
   # codeql:
-  #   uses: github/codeql-action/init@v3
-  #   with:
-  #     languages: python
-  #   permissions:
-  #     actions: read
-  #     contents: read
-  #     security-events: write
-
-  gitleaks:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: gitleaks/gitleaks-action@v2
-        with:
-          args: "detect --source=. --no-banner"
-        continue-on-error: true  # start non‑blocking
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - uses: github/codeql-action/init@v3
+  #       with:
+  #         languages: python
+  #     - uses: github/codeql-action/analyze@v3
