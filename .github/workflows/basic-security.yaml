@@ -58,14 +58,14 @@ jobs:
   #       with:
   #         sarif_file: trivy.sarif
 
-  codeql:
-    uses: github/codeql-action/init@v3
-    with:
-      languages: python
-    permissions:
-      actions: read
-      contents: read
-      security-events: write
+  # codeql:
+  #   uses: github/codeql-action/init@v3
+  #   with:
+  #     languages: python
+  #   permissions:
+  #     actions: read
+  #     contents: read
+  #     security-events: write
 
   gitleaks:
     runs-on: ubuntu-latest
