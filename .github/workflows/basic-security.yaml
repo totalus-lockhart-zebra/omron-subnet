@@ -1,0 +1,77 @@
+name: Security Baseline
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+  pull-requests: write   # Scout & Snyk comment PRs
+  security-events: write # upload SARIF (CodeQL, Snyk, Trivy)
+
+jobs:
+  # scout:
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #     - uses: docker/login-action@v3
+  #       with:
+  #         username: ${{ secrets.DOCKER_USER }}
+  #         password: ${{ secrets.DOCKER_PAT }}
+  #     - uses: docker/scout-action@v1
+  #       if: github.event_name == 'pull_request'
+  #       with:
+  #         command: quickview,cves
+  #         image: bittensor-subnet:${{ github.sha }}
+  #         only-severities: critical,high
+  #         github-token: ${{ secrets.GITHUB_TOKEN }}
+
+  snyk:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: snyk/actions/setup@v3
+      - name: Snyk OSS + Container
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        run: |
+          snyk test --sarif-file-output=snyk_oss.sarif
+          snyk container test bittensor-subnet:${{ github.sha }} --severity-threshold=high --sarif > snyk_container.sarif
+      - name: Upload SARIF
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: snyk_container.sarif
+
+  # trivy:
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #     - uses: aquasecurity/trivy-action@v0.20
+  #       with:
+  #         image-ref: bittensor-subnet:${{ github.sha }}
+  #         ignore-unfixed: true
+  #         severity: CRITICAL,HIGH
+  #         format: sarif
+  #         output: trivy.sarif
+  #         exit-code: 0                # non‑blocking first
+  #     - uses: github/codeql-action/upload-sarif@v3
+  #       with:
+  #         sarif_file: trivy.sarif
+
+  codeql:
+    uses: github/codeql-action/init@v3
+    with:
+      languages: python
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
+
+  gitleaks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: gitleaks/gitleaks-action@v2
+        with:
+          args: "detect --source=. --no-banner"
+        continue-on-error: true  # start non‑blocking
