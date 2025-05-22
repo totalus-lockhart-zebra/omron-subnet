@@ -44,16 +44,29 @@ jobs:
           DIGEST=$(docker inspect --format='{{index .RepoDigests 0}}' $IMAGE_NAME:${{ github.sha }})
           echo "image_uri=$DIGEST" >> $GITHUB_OUTPUT
 
+
   snyk-pip:
-    name: 🔍 Snyk Scan (requirements.txt - pip)
+    name: 🔍 Snyk Scan (pyproject.toml → pip)
     runs-on: ubuntu-latest
+
     steps:
       - name: 📥 Checkout Repository Code
         uses: actions/checkout@v4
 
+      - name: 🐍 Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: 📦 Install pip-tools and project deps
+        run: |
+          python -m pip install --upgrade pip
+          pip install pip-tools
+          pip-compile pyproject.toml --output-file=requirements.txt
+
       - name: 🧪 Run Snyk Scan for pip
         uses: snyk/actions/python-3.10@master
-        continue-on-error: true
+        continue-on-error: true  # Don't fail the build if vulnerabilities are found
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
         with:
@@ -64,29 +77,6 @@ jobs:
         uses: github/codeql-action/upload-sarif@v3
         with:
           sarif_file: snyk-pip.sarif
-
-  snyk-poetry:
-    name: 🔍 Snyk Scan (pyproject.toml - poetry)
-    runs-on: ubuntu-latest
-    steps:
-      - name: 📥 Checkout Repository Code
-        uses: actions/checkout@v4
-
-      - name: 🧪 Run Snyk Scan for poetry
-        uses: snyk/actions/python-3.10@master
-        continue-on-error: true
-        env:
-          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
-        with:
-          args: --file=pyproject.toml --package-manager=poetry --sarif-file-output=snyk-poetry.sarif --severity-threshold=high
-
-      - name: ☁️ Upload SARIF Report (poetry)
-        if: success() || failure()  # Prevent fail if scan skips or errors
-        uses: github/codeql-action/upload-sarif@v3
-        with:
-          sarif_file: snyk-poetry.sarif
-
-          
   gitleaks:
     name: 🔐 Gitleaks Secret Detection
     runs-on: ubuntu-latest
