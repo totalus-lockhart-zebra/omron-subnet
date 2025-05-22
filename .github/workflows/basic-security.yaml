@@ -57,10 +57,11 @@ jobs:
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
         with:
-          args: test --file=requirements.txt --package-manager=pip --sarif-file-output=snyk-pip.sarif --severity-threshold=high
+          args: --file=requirements.txt --package-manager=pip --sarif-file-output=snyk-pip.sarif --severity-threshold=high
 
       - name: ☁️ Upload SARIF Report (pip)
-        uses: github/codeql-action/upload-sarif@v2
+        if: success() || failure()  # Proceed even if snyk scan fails
+        uses: github/codeql-action/upload-sarif@v3
         with:
           sarif_file: snyk-pip.sarif
 
@@ -77,12 +78,14 @@ jobs:
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
         with:
-          args: test --file=pyproject.toml --package-manager=poetry --sarif-file-output=snyk-poetry.sarif --severity-threshold=high
+          args: --file=pyproject.toml --package-manager=poetry --sarif-file-output=snyk-poetry.sarif --severity-threshold=high
 
       - name: ☁️ Upload SARIF Report (poetry)
-        uses: github/codeql-action/upload-sarif@v2
+        if: success() || failure()  # Prevent fail if scan skips or errors
+        uses: github/codeql-action/upload-sarif@v3
         with:
           sarif_file: snyk-poetry.sarif
+
           
   gitleaks:
     name: 🔐 Gitleaks Secret Detection
