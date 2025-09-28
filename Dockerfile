@@ -1,4 +1,4 @@
-FROM --platform=linux/amd64 ubuntu:noble
+FROM --platform=linux/amd64 ubuntu:24.10
 
 # Install dependencies
 RUN apt update && \
